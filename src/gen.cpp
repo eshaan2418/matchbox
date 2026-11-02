@@ -85,21 +85,28 @@ Input Gen::next() {
   in.tif = Tif::GTC;
   if (uni() < c_.p_stp) in.stp = static_cast<Stp>(1 + below(3));
   double v = uni();
-  if (v < c_.p_market) {
+  // Walk the order-type buckets: test v against one bucket's mass, then remove that mass before
+  // the next test (same comparisons as subtracting inside each else-if condition).
+  auto in_bucket = [&v](double p) {
+    const bool hit = v < p;
+    v -= p;
+    return hit;
+  };
+  if (in_bucket(c_.p_market)) {
     in.ord_type = OrdType::Market;
     in.price = 0;
     in.tif = below(4) == 0 ? Tif::FOK : Tif::IOC;
-  } else if ((v -= c_.p_market) < c_.p_ioc) {
+  } else if (in_bucket(c_.p_ioc)) {
     in.tif = Tif::IOC;
-  } else if ((v -= c_.p_ioc) < c_.p_fok) {
+  } else if (in_bucket(c_.p_fok)) {
     in.tif = Tif::FOK;
     in.qty = static_cast<Qty>(1 + below(60));
-  } else if ((v -= c_.p_fok) < c_.p_post) {
+  } else if (in_bucket(c_.p_post)) {
     in.post_only = 1;
-  } else if ((v -= c_.p_post) < c_.p_iceberg) {
+  } else if (in_bucket(c_.p_iceberg)) {
     in.qty = static_cast<Qty>(10 + below(50));
     in.display_qty = static_cast<Qty>(1 + below(5));
-  } else if ((v -= c_.p_iceberg) < c_.p_stop) {
+  } else if (in_bucket(c_.p_stop)) {
     const bool lim = below(2) == 0;
     in.ord_type = lim ? OrdType::StopLimit : OrdType::StopMarket;
     in.tif = lim ? Tif::GTC : Tif::IOC;
