@@ -1,0 +1,1 @@
+{"impl": "fast", "inputs": 5000000, "events": 11091437, "fills": 3812348, "event_hash": "cbf29ce484222325", "seconds": 0.4068, "inputs_per_sec": 12289947, "ns_per_input": 81.37, "journal": false, "fsync_every": 0, "fsyncs": 0, "allocs_after_warmup": 0}

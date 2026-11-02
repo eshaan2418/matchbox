@@ -1,0 +1,2 @@
+{"connections": 8, "target_rate": 50000, "duration_s": 10.0, "sent": 590000, "new_orders_measured_sent": 399968, "acked_measured": 399968, "unacked_at_end": 0, "acks": 471853, "rejects": 11892, "fills": 247576, "lost_connections": 0, "achieved_rate": 39997,
+ "order_to_ack_us": {"p50": 57.09, "p90": 99.52, "p99": 208.38, "p99.9": 4284.42, "p99.99": 8241.15, "max": 9075.99, "mean": 79.12}}

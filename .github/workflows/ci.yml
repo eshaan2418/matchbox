@@ -1,0 +1,83 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, cxx: clang++, name: linux-clang }
+          - { os: ubuntu-latest, cxx: g++, name: linux-gcc }
+          - { os: macos-latest, cxx: clang++, name: macos-arm64 }
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - name: Install deps (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja
+      - name: Configure (portable flags, no -march=native)
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+      - name: Build
+        run: cmake --build build -j 4
+      - name: Test
+        run: ctest --test-dir build -j 4 --output-on-failure
+      - name: Engine benchmark + end-to-end demo smoke test
+        run: |
+          build/matchbox-bench --inputs 1000000 --hash
+          bash scripts/demo.sh
+          true
+      - name: Latency benchmark (shared runner; noisy, informational)
+        run: build/matchbox-bench --inputs 2000000 --latency
+
+  sanitizers:
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [ "address,undefined", "thread" ]
+    name: sanitize-${{ matrix.sanitizer }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          -DCMAKE_CXX_COMPILER=clang++ -DMATCHBOX_SANITIZE=${{ matrix.sanitizer }} -DMATCHBOX_BENCH=OFF
+      - run: cmake --build build -j 4
+      - name: Test
+        env:
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+          ASAN_OPTIONS: detect_leaks=1
+          TSAN_OPTIONS: halt_on_error=1
+        run: ctest --test-dir build -j 2 --output-on-failure
+
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - name: Build fuzzer
+        run: |
+          cmake -S . -B build-fuzz -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DMATCHBOX_FUZZ=ON -DMATCHBOX_BENCH=OFF
+          cmake --build build-fuzz --target fuzz_engine fuzz_protocol -j 4
+      - name: Fuzz parser + books (time-boxed)
+        run: mkdir -p corpus && build-fuzz/fuzz_engine -max_total_time=90 && build-fuzz/fuzz_protocol -max_total_time=30 -rss_limit_mb=2048
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build clang-tidy clang-format
+      - run: cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DMATCHBOX_BENCH=OFF
+      - name: clang-tidy
+        run: clang-tidy -p build src/*.cpp tools/*.cpp
+      - name: clang-format (report)
+        continue-on-error: true
+        run: clang-format --dry-run include/matchbox/*.hpp src/*.cpp tools/*.cpp

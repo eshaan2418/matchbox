@@ -1,0 +1,1 @@
+{"impl": "ref", "inputs": 5000000, "events": 11091437, "fills": 3812348, "event_hash": "9e8c2f21fd5a3dcb", "seconds": 3.8250, "inputs_per_sec": 1307186, "ns_per_input": 765.00, "journal": false, "fsync_every": 0, "fsyncs": 0, "allocs_after_warmup": 3856696}

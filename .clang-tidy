@@ -1,0 +1,12 @@
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-macro-parentheses,
+  performance-*,
+  modernize-use-nullptr,
+  modernize-use-override,
+  readability-braces-around-statements,
+  -readability-braces-around-statements
+HeaderFilterRegex: 'include/itchbook/.*'
+WarningsAsErrors: 'bugprone-*,performance-*'
